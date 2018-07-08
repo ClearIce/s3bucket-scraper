@@ -10,7 +10,7 @@ from time import sleep
 parser = argparse.ArgumentParser(description='Scrape s3 stuff from grayhatwarefare')
 parser.add_argument('pagination_start', metavar='pagination_start', type=int, help='pagination value to start on (0 for the beginning)')
 parser.add_argument('search_value', metavar='search_value', type=str, help='search value (e.g. \'xls\')')
-parser.add_argument('request_timeout_ms', metavar='request_timeout_ms', type=int, help='timeout between requests to grayhatwarfare in ms (default 3s)')
+parser.add_argument('request_timeout_ms', metavar='request_timeout_ms', type=int, help='timeout between requests to grayhatwarfare in ms')
 
 # 'xls' is the search term
 grayhat_host = 'https://buckets.grayhatwarfare.com'
