@@ -30,12 +30,12 @@ def simple_get(url):
         return None
 
 
-def get_bs4(content):
+def get_soup(content):
     try:
         if content is not None:
             return BeautifulSoup(content, 'html.parser')
         else:
-            log('get_bs4: content cannot be None')
+            log('get_soup: content cannot be None')
 
     except Exception as ex:
         log(ex)
@@ -48,13 +48,30 @@ def get_s3_table(html):
         if html is not None:            
             table = html.select('table') #should only be one table, but might need to future-proof
             if table is not None:
-                return table
+                return table[0]
             else:
                 log('get_s3_table: table not found on page')
-                exit()
         else:
             log('get_s3_table: html cannot be None')
-            exit()            
+
+    except Exception as ex:
+        log(ex)
+
+def get_s3_table_links(table):
+    try:
+        if table is None:
+            log('get_s3_table_links: table cannot be None')
+            return None
+        
+        links = table.select('td a')
+        result = []
+
+        for link in links:
+            href = link.attrs['href']
+            if href.startswith('http'):
+                result.append(link.attrs['href'])
+
+        return result
 
     except Exception as ex:
         log(ex)
@@ -123,7 +140,7 @@ def get_aws_file(url):
         if is_good_file_response(r):
             parsed = urlparse(url)
             hostname = parsed.hostname
-            filename = os.path.basename(parsed.path)
+            filename = parsed.path.replace('/', '_').strip('_')
             target = '{0}/{1}'.format(hostname, filename)
 
             if os.path.isdir(hostname) is False:
@@ -158,11 +175,26 @@ if __name__ == '__main__':
     url = make_url(args.search_value, args.pagination_start)
     timeout = args.request_timeout_ms
 
-    print(url)
+    print('Starting point: {0}'.format(url))
 
     while(True):
+        if url is None:
+            log('main: no url, exiting')
+            exit()
+        
+        content = simple_get(url)
+        soup = get_soup(content)
+        table = get_s3_table(soup)
+        links = get_s3_table_links(table)
 
+        for link in links:
+            log('main: getting {0}'.format(link))
+            get_aws_file(link)
+
+
+        url = get_next_s3_page(soup)
         #testing
         log('sleeping for {0}'.format(timeout))
         sleep(timeout / 1000)
+        log('main: next s3 page: {0}'.format(url))
     
