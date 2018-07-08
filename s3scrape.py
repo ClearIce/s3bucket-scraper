@@ -13,6 +13,7 @@ parser.add_argument('search_value', metavar='search_value', type=str, help='sear
 parser.add_argument('request_timeout_ms', metavar='request_timeout_ms', type=int, help='timeout between requests to grayhatwarfare in ms (default 3s)')
 
 # 'xls' is the search term
+grayhat_host = 'https://buckets.grayhatwarfare.com'
 base_url = 'https://buckets.grayhatwarfare.com/results/{0}/{1}'
 
 def simple_get(url):
@@ -59,6 +60,7 @@ def get_s3_table(html):
         log(ex)
 
 """
+returns a list 
 .pagination will be a ul
 url ends with start record index, e.g. https://buckets.grayhatwarfare.com/results/xls/20 lists 21-40
 * the last li will contain the maximum record count, e.g. /results/xls/397912
@@ -71,10 +73,49 @@ def get_s3_pagination(html):
         return None        
 
     try:
-        html.select('.pagination')
+        element = html.select('.pagination')
+        if len(element) > 0:
+            liList = element.select('li')
+            link = liList[len(liList) - 2].select('a')
+            if link is not None:
+                link.attrs['href']
+        else:
+            log('get_s3_pagination: could not find pagination element')
     except Exception as ex:
         log(ex)
 
+"""
+returns the full url of the next page to be scraped for s3 links
+"""
+def get_next_s3_page(html):
+    if html is None:
+        log('get_next_s3_page: html cannot be None')
+        return None        
+
+    try:
+        element = html.select('.pagination')
+        if len(element) > 0:
+            liList = element[0].select('li')
+            # second to last link is the 'next 20 results' button
+            link = liList[len(liList) - 2].select('a')
+            if link is not None and len(link) > 0:
+                href = link[0].attrs.get('href')
+                if href is not None and len(href) > 0:
+                    return '{0}/{1}'.format(grayhat_host, href)
+                else:
+                    log('get_next_s3_page: invalid href value for link: {0}'.format(link))
+            else:
+                log('get_next_s3_page: invalid link value for element: {0}'.format(element))
+        else:
+            log('get_next_s3_page: could not find pagination element')
+    except Exception as ex:
+        log(ex)
+
+
+"""
+get files from s3 bucket links
+makes dirs with the hostname and saves the file within that
+"""
 def get_aws_file(url):
     try:
         r = get(url, allow_redirects=False)
